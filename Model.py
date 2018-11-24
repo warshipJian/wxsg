@@ -39,3 +39,14 @@ class article_content(Base):
     id = Column(Integer, primary_key=True)
     article_id = Column(Integer)
     content = Column(String)
+
+# 文章图片表
+class article_img(Base):
+    # 表的名字:
+    __tablename__ = 'article_img'
+
+    # 表的结构:
+    id = Column(Integer, primary_key=True)
+    article_id = Column(Integer)
+    local = Column(String(256))
+    url = Column(String(256))

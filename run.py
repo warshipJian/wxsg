@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 #coding:utf8
 
-import os,sys,time,errno
+import os,re,sys,time,errno
 import requests
 import redis
 import shutil
 import urlparse
-from pprint import pprint
+from BeautifulSoup import BeautifulSoup as BSHTML
 from wechatsogou import WechatSogouAPI, WechatSogouConst
 from sqlalchemy import Column, String, create_engine
 from sqlalchemy.orm import sessionmaker
@@ -23,7 +23,7 @@ class spider(object):
         self.check_time = check_time
 
         # 创建数据库连接
-        engine = create_engine('mysql://root@localhost:3306/wx?charset=utf8mb4')
+        engine = create_engine('mysql://root:123456@localhost:3306/wx?charset=utf8mb4')
         DBSession = sessionmaker(bind=engine)
         self.session =  DBSession()
 
@@ -62,22 +62,47 @@ class spider(object):
         )
         session.add(new_article)
         session.commit()
+        return new_article.id
 
-        # 爬取正文
-        res = requests.get(article['url'])
-        res.encoding = 'utf-8'
-
+    def create_article_content(self,session,html,article_id):
+        """
+        存取正文
+        :param session:
+        :param html:
+        :param article_id:
+        :return:
+        """
         # 插入正文
         new_article_content = Model.article_content(
-            article_id=new_article.id,
-            content=res.text,
+            article_id=article_id,
+            content=html,
         )
         session.add(new_article_content)
         session.commit()
+        return new_article_content.id
+
+    def create_article_img(self,session,article_id,img_path,url):
+        """
+        存取图片
+        :param session:
+        :param id:
+        :param img_path:
+        :param url:
+        :return:
+        """
+        # 插入图片
+        new_article_img = Model.article_img(
+            article_id=article_id,
+            local=img_path,
+            url=url,
+        )
+        session.add(new_article_img)
+        session.commit()
+        return new_article_img.id
 
     def get_img_path(self,img_url):
         """
-        提取url的host和后面的路径
+        根据url，提取地址和图片名
         :param img_url:
         :return:
         """
@@ -86,16 +111,24 @@ class spider(object):
         path_tmp = path_tmp.split('/')
         path = '/'.join(path_tmp[0:-1])
         name = path_tmp[-1]
+        if len(name) > 30:
+            name = 'a_' + self.a_type + '_' + str(self.page) + '_' + str(int(time.time())) + '.jpg'
+        else:
+            pattern = re.compile(r'(.*)?jpg')
+            match = pattern.match(name)
+            if not match:
+                name = name + '.jpg'
 
-        return '/opt/img/' + urlparse_img.netloc + time.strftime("/%Y/%m/%d", time.localtime()) + path, name
+        return '/opt/img/' + time.strftime("%Y/%m/%d/", time.localtime()) + urlparse_img.netloc +  path, name
 
-    def save_img(self,img_url,img_name,img_path):
+    def save_img(self,img_url):
         """
         存取图片
         :param img_url:
         :param img_name:
         :return:
         """
+        img_path,img_name = self.get_img_path(img_url)
         if not img_url or not img_name or not img_path:
             return None
 
@@ -116,24 +149,49 @@ class spider(object):
             with open(img_file, 'wb') as f:
                 r.raw.decode_content = True
                 shutil.copyfileobj(r.raw, f)
+                return img_file
+        else:
+            return False
 
     def work(self,gzh,article):
-        # 图片处理
-        # 公众号头像
-        img_url_gzh = gzh['headimage']
-        img_path_gzh,img_name_gzh = self.get_img_path(img_url_gzh)
-        img_name_gzh = img_name_gzh + '.jpg'
-        self.save_img(img_url_gzh, img_name_gzh, img_path_gzh)
-        gzh['headimage_local'] = img_path_gzh + '/' + img_name_gzh  # 存储路径到数据库
-        # 文章图片
-        img_url_a = article['main_img']
-        img_path_a,_tmp = self.get_img_path(img_url_a)
-        img_name_a = 'a_' + self.a_type + '_' + str(article['time']) + '_' + str(int(time.time())) + '.jpg'
-        self.save_img(img_url_a, img_name_a, img_path_a)
-        article['main_img_local'] = img_path_a + '/' + img_name_a  # 存储路径到数据库
+
+        # 公众号头像处理
+        gzh['headimage_local'] = 'None'
+        img_file_gzh = self.save_img(gzh['headimage']) # 传url，图片名称，图片地址
+        if img_file_gzh:
+            gzh['headimage_local'] = img_file_gzh # 存储路径到数据库
+
+        # 文章首图片处理
+        article['main_img_local'] = 'None'
+        img_file_a = self.save_img(article['main_img'])  # 传url，图片名称，图片地址
+        if img_file_a:
+            article['main_img_local'] = img_file_a  # 存储路径到数据库
 
         # 文章处理
-        self.create_article(self.session, gzh, article, self.a_type)
+        a_id = self.create_article(self.session, gzh, article, self.a_type)
+
+        # 爬取正文
+        res = requests.get(article['url'])
+        res.encoding = 'utf-8'
+
+        # 存储正文
+        self.create_article_content(self.session,res.text,a_id)
+
+        # 分析正文内容，提取图片
+        soup = BSHTML(res.text)
+        images = soup.findAll('img')
+        if images:
+            for image in images:
+                data_src = image.get('data-src')
+                if data_src:
+                    img_path = self.save_img(data_src)
+                    if img_path:
+                        self.create_article_img(self.session, a_id,img_path, data_src)
+                src = image.get('src')
+                if src:
+                    img_path = self.save_img(src)
+                    if img_path:
+                        self.create_article_img(self.session, a_id, img_path, src)
 
         # 打印下
         print(str(article['time']) + ' '+ str(self.page) +' ' + gzh['wechat_name'] + ' ' + article['title'])
