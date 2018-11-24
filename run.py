@@ -6,13 +6,13 @@ import requests
 import redis
 import shutil
 import urlparse
-from BeautifulSoup import BeautifulSoup as BSHTML
+from bs4 import BeautifulSoup
 from wechatsogou import WechatSogouAPI, WechatSogouConst
 from sqlalchemy import Column, String, create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import Model
-
+from abuyun import abuyun
 
 class spider(object):
 
@@ -171,14 +171,14 @@ class spider(object):
         a_id = self.create_article(self.session, gzh, article, self.a_type)
 
         # 爬取正文
-        res = requests.get(article['url'])
+        res = abuyun(article['url']).html_requests()
         res.encoding = 'utf-8'
 
         # 存储正文
         self.create_article_content(self.session,res.text,a_id)
 
         # 分析正文内容，提取图片
-        soup = BSHTML(res.text)
+        soup = BeautifulSoup(res.text,"html.parser")
         images = soup.findAll('img')
         if images:
             for image in images:
@@ -262,5 +262,5 @@ if __name__ == '__main__':
             page += 1
     else:
         for k in wxs:
-            s = spider(wxs[k],1)
+            s = spider(wxs[k],1,False)
             s.run()
