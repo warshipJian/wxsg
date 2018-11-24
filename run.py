@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #coding:utf8
 
-import os,time,errno
+import os,sys,time,errno
 import requests
 import redis
 import shutil
@@ -16,12 +16,14 @@ import Model
 
 class spider(object):
 
-    def __init__(self,a_type):
+    def __init__(self,a_type,page=10,check_time=True):
         self.m_type = 'WechatSogouConst.hot_index.'
         self.a_type = a_type
+        self.page = page
+        self.check_time = check_time
 
         # 创建数据库连接
-        engine = create_engine('mysql://root:123456@localhost:3306/wxsg')
+        engine = create_engine('mysql://root@localhost:3306/wx?charset=utf8mb4')
         DBSession = sessionmaker(bind=engine)
         self.session =  DBSession()
 
@@ -80,10 +82,12 @@ class spider(object):
         :return:
         """
         urlparse_img = urlparse.urlparse(img_url)
-        path = urlparse_img.path
-        path = '/'.join(path.split('/')[0:-1])
+        path_tmp = urlparse_img.path
+        path_tmp = path_tmp.split('/')
+        path = '/'.join(path_tmp[0:-1])
+        name = path_tmp[-1]
 
-        return os.getcwd() + '/' + urlparse_img.netloc + path
+        return '/opt/img/' + urlparse_img.netloc + time.strftime("/%Y/%m/%d", time.localtime()) + path, name
 
     def save_img(self,img_url,img_name,img_path):
         """
@@ -113,51 +117,64 @@ class spider(object):
                 r.raw.decode_content = True
                 shutil.copyfileobj(r.raw, f)
 
-    def run(self):
-        # 取时间
-        last_time = self.r.get(self.a_type)
-        if not last_time:
-            last_time = 0
-        else:
-            last_time = int(last_time)
-        max_time = last_time
+    def work(self,gzh,article):
+        # 图片处理
+        # 公众号头像
+        img_url_gzh = gzh['headimage']
+        img_path_gzh,img_name_gzh = self.get_img_path(img_url_gzh)
+        img_name_gzh = img_name_gzh + '.jpg'
+        self.save_img(img_url_gzh, img_name_gzh, img_path_gzh)
+        gzh['headimage_local'] = img_path_gzh + '/' + img_name_gzh  # 存储路径到数据库
+        # 文章图片
+        img_url_a = article['main_img']
+        img_path_a,_tmp = self.get_img_path(img_url_a)
+        img_name_a = 'a_' + self.a_type + '_' + str(article['time']) + '_' + str(int(time.time())) + '.jpg'
+        self.save_img(img_url_a, img_name_a, img_path_a)
+        article['main_img_local'] = img_path_a + '/' + img_name_a  # 存储路径到数据库
 
+        # 文章处理
+        self.create_article(self.session, gzh, article, self.a_type)
+
+        # 打印下
+        print(str(article['time']) + ' '+ str(self.page) +' ' + gzh['wechat_name'] + ' ' + article['title'])
+
+    def run(self):
         # 创建搜狗爬虫
         ws_api = WechatSogouAPI()
 
+        last_time = 0
+        max_time = 0
+        set_redis = False
+        if self.check_time:
+            # 取时间
+            last_time = self.r.get(self.a_type)
+            if not last_time:
+                last_time = 0
+            else:
+                last_time = int(last_time)
+            max_time = last_time
+
         # 开始爬取
-        gzh_articles = getattr(ws_api, 'get_gzh_article_by_hot')(eval(self.m_type + self.a_type))
+        gzh_articles = getattr(ws_api, 'get_gzh_article_by_hot')(eval(self.m_type + self.a_type),self.page)
         for i in gzh_articles:
             gzh = i['gzh']
             article = i['article']
-            time_now = int(article['time'])
 
-            if  time_now > last_time:
-                # 图片处理
-                # 公众号头像
-                img_url_gzh = gzh['headimage']
-                img_path_gzh = self.get_img_path(img_url_gzh)
-                img_name_gzh = 'gzh' + str(article['time']) + '_' + str(int(time.time())) + '.jpg'
-                self.save_img(img_url_gzh, img_name_gzh, img_path_gzh)
-                gzh['headimage_local'] = img_path_gzh + '/' +  img_path_gzh # 存储路径到数据库
-                # 文章图片
-                img_url_a = article['main_img']
-                img_path_a = self.get_img_path(img_url_a)
-                img_name_a = 'a' + str(article['time']) + '_' + str(int(time.time())) + '.jpg'
-                self.save_img(img_url_a, img_name_a, img_path_a)
-                article['main_img_local'] = img_path_a + '/' +  img_name_a # 存储路径到数据库
+            if self.check_time:
+                time_now = int(article['time'])
 
-                # 文章处理
-                self.create_article(self.session, gzh, article, self.a_type)
+                if time_now > last_time:
+                    self.work(gzh, article)  # 处理文章，图片
 
-                # 打印下
-                print(str(article['time']) + ' ' + '爬取' + gzh['wechat_name'] + ' ' + article['title'])
+                # 更新最后一次的爬取时间，避免重复爬取
+                if time_now > max_time:
+                    max_time = time_now
+                    set_redis = True
+            else:
+                self.work(gzh, article)  # 处理文章，图片
 
-            # 更新最后一次的爬取时间，避免重复爬取
-            if time_now > max_time:
-                max_time = time_now
-
-        self.r.set(self.a_type, max_time)
+        if set_redis:
+            self.r.set(self.a_type, max_time)
 
 if __name__ == '__main__':
     ''' 类型
@@ -178,6 +195,14 @@ if __name__ == '__main__':
         '时尚圈':'fashion',
     }
 
-    for k in wxs:
-        s = spider(wxs[k])
-        s.run()
+    args = sys.argv
+    if len(args) > 1:
+        page = 2
+        while True:
+            s = spider(args[1],page,False)
+            s.run()
+            page += 1
+    else:
+        for k in wxs:
+            s = spider(wxs[k],1)
+            s.run()
