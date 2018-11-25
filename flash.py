@@ -62,3 +62,5 @@ if __name__ == '__main__':
                         img_path = run.spider('',1).save_img(src)
                         if img_path:
                             run.spider('', 1).create_article_img(session, a_id, img_path, src)
+
+    session.close()

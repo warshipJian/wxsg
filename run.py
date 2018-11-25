@@ -160,6 +160,9 @@ class spider(object):
 
     def work(self, gzh, article):
 
+        # 发现有重复的，去下重复
+
+
         # 公众号头像处理
         gzh['headimage_local'] = 'None'
         img_file_gzh = self.save_img(gzh['headimage'])  # 传url，图片名称，图片地址
@@ -273,5 +276,5 @@ if __name__ == '__main__':
             page += 1
     else:
         for k in wxs:
-            s = spider(wxs[k], 1)
+            s = spider(wxs[k], 2,False)
             s.run()
