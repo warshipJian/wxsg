@@ -9,3 +9,5 @@ pip install requests
 pip install redis
 
 pip install urlparse
+
+pip install bs4

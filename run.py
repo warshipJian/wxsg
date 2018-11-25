@@ -30,7 +30,7 @@ class spider(object):
         self.session = DBSession()
 
         # 创建redis连接
-        self.r = redis.Redis(host='localhost', port=6379, db=0)
+        self.r = redis.Redis(host='localhost', port=6379, db=1)
 
     def __del__(self):
         # 释放数据库连接
@@ -237,6 +237,10 @@ class spider(object):
             else:
                 self.work(gzh, article)  # 处理文章，图片
 
+        # 记录下爬取的页码
+        page_name = self.a_type + '_page'
+        self.r.set(page_name, self.page)
+
         if set_redis:
             self.r.set(self.a_type, max_time)
 
@@ -269,5 +273,5 @@ if __name__ == '__main__':
             page += 1
     else:
         for k in wxs:
-            s = spider(wxs[k], 1,False)
+            s = spider(wxs[k], 1)
             s.run()
