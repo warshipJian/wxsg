@@ -34,8 +34,10 @@ class abuyun:
             "https": proxyMeta,
         }
 
+        headers = {'Connection': 'close'}
+
         try:
-            resp = requests.get(self.url, proxies=proxies)
+            resp = requests.get(self.url, proxies=proxies, headers=headers)
             resp.encoding = 'utf-8'
             html = resp.text
         except:
