@@ -159,7 +159,7 @@ class spider(object):
             return False
 
     def work(self, gzh, article):
-        # 发现有重复的，去下重复
+        # 去掉重复的文章，即同一个公众号，同一时间内的同一个标题的文章
         a_dis = self.session.execute(
             'select id from article where wechat_name = "{}" and time = "{}" and title = "{}";'.
                 format(gzh['wechat_name'], article['time'],article['title']))
