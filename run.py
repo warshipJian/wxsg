@@ -159,9 +159,13 @@ class spider(object):
             return False
 
     def work(self, gzh, article):
-
         # 发现有重复的，去下重复
-
+        a_dis = self.session.execute(
+            'select id from article where wechat_name = "{}" and time = "{}" and title = "{}";'.
+                format(gzh['wechat_name'], article['time'],article['title']))
+        if a_dis.fetchall() != []:
+            print('重复文章 {} {} {}'.format(article['time'],gzh['wechat_name'],article['title']))
+            return 'no'
 
         # 公众号头像处理
         gzh['headimage_local'] = 'None'
@@ -276,5 +280,5 @@ if __name__ == '__main__':
             page += 1
     else:
         for k in wxs:
-            s = spider(wxs[k], 2,False)
+            s = spider(wxs[k], 1,False)
             s.run()
