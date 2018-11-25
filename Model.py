@@ -37,6 +37,7 @@ class article_content(Base):
 
     # 表的结构:
     id = Column(Integer, primary_key=True)
+    status = Column(Integer)
     article_id = Column(Integer)
     content = Column(String)
 

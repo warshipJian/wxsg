@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-#coding:utf8
+# coding:utf8
 
-import os,re,sys,time,errno
+import os, re, sys, time, errno
 import requests
 import redis
 import shutil
@@ -13,19 +13,21 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 import Model
 from abuyun import abuyun
+import tools
+
 
 class spider(object):
 
-    def __init__(self,a_type,page=10,check_time=True):
+    def __init__(self, a_type, page=10, check_time=True):
         self.m_type = 'WechatSogouConst.hot_index.'
         self.a_type = a_type
         self.page = page
         self.check_time = check_time
 
         # 创建数据库连接
-        engine = create_engine('mysql://root:123456@localhost:3306/wx?charset=utf8mb4')
+        engine = create_engine('mysql://root:123456@localhost:3306/wx?charset=utf8mb4', pool_pre_ping=True)
         DBSession = sessionmaker(bind=engine)
-        self.session =  DBSession()
+        self.session = DBSession()
 
         # 创建redis连接
         self.r = redis.Redis(host='localhost', port=6379, db=0)
@@ -37,7 +39,7 @@ class spider(object):
         # 释放redis连接
         del self.r
 
-    def create_article(self,session, gzh, article, a_type):
+    def create_article(self, session, gzh, article, a_type):
         """
         存取文章
         :param session:
@@ -64,24 +66,26 @@ class spider(object):
         session.commit()
         return new_article.id
 
-    def create_article_content(self,session,html,article_id):
+    def create_article_content(self, session, html, article_id,status):
         """
         存取正文
         :param session:
         :param html:
         :param article_id:
+        :param status:
         :return:
         """
         # 插入正文
         new_article_content = Model.article_content(
             article_id=article_id,
             content=html,
+            status=status,
         )
         session.add(new_article_content)
         session.commit()
         return new_article_content.id
 
-    def create_article_img(self,session,article_id,img_path,url):
+    def create_article_img(self, session, article_id, img_path, url):
         """
         存取图片
         :param session:
@@ -100,35 +104,36 @@ class spider(object):
         session.commit()
         return new_article_img.id
 
-    def get_img_path(self,img_url):
+    def get_img_path(self, img_url):
         """
         根据url，提取地址和图片名
         :param img_url:
         :return:
         """
         urlparse_img = urlparse.urlparse(img_url)
-        path_tmp = urlparse_img.path
-        path_tmp = path_tmp.split('/')
+        path = urlparse_img.path
+        path_tmp = path.split('/')
         path = '/'.join(path_tmp[0:-1])
         name = path_tmp[-1]
-        if len(name) > 30:
-            name = 'a_' + self.a_type + '_' + str(self.page) + '_' + str(int(time.time())) + '.jpg'
+        if urlparse_img.query:
+            name_tmp = tools.md5(urlparse_img.query).get_value()
+            name = self.a_type + '_' + name_tmp + '.jpg'
         else:
             pattern = re.compile(r'(.*)?jpg')
             match = pattern.match(name)
             if not match:
                 name = name + '.jpg'
 
-        return '/opt/img/' + time.strftime("%Y/%m/%d/", time.localtime()) + urlparse_img.netloc +  path, name
+        return '/opt/img/' + time.strftime("%Y/%m/%d/", time.localtime()) + urlparse_img.netloc + path, name
 
-    def save_img(self,img_url):
+    def save_img(self, img_url):
         """
         存取图片
         :param img_url:
         :param img_name:
         :return:
         """
-        img_path,img_name = self.get_img_path(img_url)
+        img_path, img_name = self.get_img_path(img_url)
         if not img_url or not img_name or not img_path:
             return None
 
@@ -153,13 +158,13 @@ class spider(object):
         else:
             return False
 
-    def work(self,gzh,article):
+    def work(self, gzh, article):
 
         # 公众号头像处理
         gzh['headimage_local'] = 'None'
-        img_file_gzh = self.save_img(gzh['headimage']) # 传url，图片名称，图片地址
+        img_file_gzh = self.save_img(gzh['headimage'])  # 传url，图片名称，图片地址
         if img_file_gzh:
-            gzh['headimage_local'] = img_file_gzh # 存储路径到数据库
+            gzh['headimage_local'] = img_file_gzh  # 存储路径到数据库
 
         # 文章首图片处理
         article['main_img_local'] = 'None'
@@ -171,22 +176,24 @@ class spider(object):
         a_id = self.create_article(self.session, gzh, article, self.a_type)
 
         # 爬取正文
-        res = abuyun(article['url']).html_requests()
-        res.encoding = 'utf-8'
+        html = abuyun(article['url']).get_html()
 
         # 存储正文
-        self.create_article_content(self.session,res.text,a_id)
+        status = 1
+        if '<!DOCTYPE html>' not in html:
+            status = 0
+        self.create_article_content(self.session, html, a_id,status)
 
         # 分析正文内容，提取图片
-        soup = BeautifulSoup(res.text,"html.parser")
-        images = soup.findAll('img')
+        soup = BeautifulSoup(html, "html.parser")
+        images = soup.find_all('img')
         if images:
             for image in images:
                 data_src = image.get('data-src')
                 if data_src:
                     img_path = self.save_img(data_src)
                     if img_path:
-                        self.create_article_img(self.session, a_id,img_path, data_src)
+                        self.create_article_img(self.session, a_id, img_path, data_src)
                 src = image.get('src')
                 if src:
                     img_path = self.save_img(src)
@@ -194,13 +201,12 @@ class spider(object):
                         self.create_article_img(self.session, a_id, img_path, src)
 
         # 打印下
-        print(str(article['time']) + ' '+ str(self.page) +' ' + gzh['wechat_name'] + ' ' + article['title'])
+        print(str(article['time']) + ' ' + str(self.page) + ' ' + gzh['wechat_name'] + ' ' + article['title'])
 
     def run(self):
         # 创建搜狗爬虫
         ws_api = WechatSogouAPI()
 
-        last_time = 0
         max_time = 0
         set_redis = False
         if self.check_time:
@@ -213,7 +219,7 @@ class spider(object):
             max_time = last_time
 
         # 开始爬取
-        gzh_articles = getattr(ws_api, 'get_gzh_article_by_hot')(eval(self.m_type + self.a_type),self.page)
+        gzh_articles = getattr(ws_api, 'get_gzh_article_by_hot')(eval(self.m_type + self.a_type), self.page)
         for i in gzh_articles:
             gzh = i['gzh']
             article = i['article']
@@ -234,6 +240,7 @@ class spider(object):
         if set_redis:
             self.r.set(self.a_type, max_time)
 
+
 if __name__ == '__main__':
     ''' 类型
     养生堂 health
@@ -248,19 +255,19 @@ if __name__ == '__main__':
     '''
 
     wxs = {
-        '私房话':'sifanghua',
-        '八封精':'gossip',
-        '时尚圈':'fashion',
+        '私房话': 'sifanghua',
+        '八封精': 'gossip',
+        '时尚圈': 'fashion',
     }
 
     args = sys.argv
     if len(args) > 1:
         page = 2
         while True:
-            s = spider(args[1],page,False)
+            s = spider(args[1], page, False)
             s.run()
             page += 1
     else:
         for k in wxs:
-            s = spider(wxs[k],1,False)
+            s = spider(wxs[k], 1,False)
             s.run()
