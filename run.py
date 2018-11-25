@@ -160,12 +160,13 @@ class spider(object):
 
     def work(self, gzh, article):
         # 去掉重复的文章，即同一个公众号，同一时间内的同一个标题的文章
-        a_dis = self.session.execute(
-            'select id from article where wechat_name = "{}" and time = "{}" and title = "{}";'.
-                format(gzh['wechat_name'], article['time'],article['title']))
-        if a_dis.fetchall() != []:
-            print('重复文章 {} {} {}'.format(article['time'],gzh['wechat_name'],article['title']))
-            return 'no'
+        a_dis = self.session.query(Model.article)\
+            .filter(Model.article.title == article['title'])\
+            .filter(Model.article.time == article['time'])\
+            .filter(Model.article.wechat_name == gzh['wechat_name'])\
+            .first()
+        if a_dis:
+            return 'yes'
 
         # 公众号头像处理
         gzh['headimage_local'] = 'None'
