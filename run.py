@@ -234,16 +234,21 @@ class spider(object):
 
             if self.check_time:
                 time_now = int(article['time'])
-
                 if time_now > last_time:
-                    self.work(gzh, article)  # 处理文章，图片
+                    # 将公众号放入redis,用于公众号文章爬取
+                    self.r.lpush('gzh', gzh['wechat_name'] + '_' + self.a_type)
+                    # 处理文章，图片
+                    self.work(gzh, article)
 
                 # 更新最后一次的爬取时间，避免重复爬取
                 if time_now > max_time:
                     max_time = time_now
                     set_redis = True
             else:
-                self.work(gzh, article)  # 处理文章，图片
+                # 将公众号放入redis,用于公众号文章爬取
+                self.r.lpush('gzh', gzh['wechat_name'] + '_' + self.a_type)
+                # 处理文章，图片
+                self.work(gzh, article)
 
         # 记录下爬取的页码
         page_name = self.a_type + '_page'
