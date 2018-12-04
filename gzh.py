@@ -78,18 +78,24 @@ if __name__ == '__main__':
         "https": proxyMeta,
     }
 
-    ws_api = WechatSogouAPI(captcha_break_time=1,proxies=proxies)
+    use_proxies = 2
     while True:
         gzh_name = r.lpop('gzh')
         if gzh_name:
             gzh_tmp = gzh_name.split('_')
             try:
+                if use_proxies % 2 == 1:
+                    ws_api = WechatSogouAPI(captcha_break_time=1,proxies=proxies)
+                else:
+                    ws_api = WechatSogouAPI(captcha_break_time=1)
                 data = ws_api.get_gzh_article_by_history(gzh_tmp[0],
                                                          identify_image_callback_sogou=identify_image_callback_showapi_sogou,
                                                          identify_image_callback_weixin=identify_image_callback_showapi_weixin)
             except exceptions.WechatSogouVcodeOcrException as e:
+                use_proxies += 1
                 print('验证码错误')
                 sys.exit(0)
+
             gzh = {}
             if 'gzh' in data:
                 gzh['wechat_name'] = data['gzh']['wechat_name']
