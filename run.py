@@ -18,11 +18,10 @@ import tools
 
 class spider(object):
 
-    def __init__(self, a_type, page=10, check_time=True):
+    def __init__(self, a_type, page=1):
         self.m_type = 'WechatSogouConst.hot_index.'
         self.a_type = a_type
         self.page = page
-        self.check_time = check_time
 
         # 创建数据库连接
         engine = create_engine('mysql://root:123456@localhost:3306/wx?charset=utf8mb4', pool_pre_ping=True)
@@ -124,7 +123,7 @@ class spider(object):
             if not match:
                 name = name + '.jpg'
 
-        return '/opt/img/' + time.strftime("%Y/%m/%d/", time.localtime()) + urlparse_img.netloc + path, name
+        return './img/' + time.strftime("%Y/%m/%d/", time.localtime()) + urlparse_img.netloc + path, name
 
     def save_img(self, img_url):
         """
@@ -180,6 +179,9 @@ class spider(object):
         if img_file_a:
             article['main_img_local'] = img_file_a  # 存储路径到数据库
 
+        # 将公众号放入redis,用于公众号文章爬取
+        self.r.lpush('gzh', gzh['wechat_name'] + '_' + self.a_type)
+
         # 文章处理
         a_id = self.create_article(self.session, gzh, article, self.a_type)
 
@@ -215,48 +217,11 @@ class spider(object):
         # 创建搜狗爬虫
         ws_api = WechatSogouAPI()
 
-        max_time = 0
-        set_redis = False
-        if self.check_time:
-            # 取时间
-            last_time = self.r.get(self.a_type)
-            if not last_time:
-                last_time = 0
-            else:
-                last_time = int(last_time)
-            max_time = last_time
-
-        # 开始爬取
+        # 爬取热门文章
         gzh_articles = getattr(ws_api, 'get_gzh_article_by_hot')(eval(self.m_type + self.a_type), self.page)
         for i in gzh_articles:
-            gzh = i['gzh']
-            article = i['article']
-
-            if self.check_time:
-                time_now = int(article['time'])
-                if time_now > last_time:
-                    # 将公众号放入redis,用于公众号文章爬取
-                    self.r.lpush('gzh', gzh['wechat_name'] + '_' + self.a_type)
-                    # 处理文章，图片
-                    self.work(gzh, article)
-
-                # 更新最后一次的爬取时间，避免重复爬取
-                if time_now > max_time:
-                    max_time = time_now
-                    set_redis = True
-            else:
-                # 将公众号放入redis,用于公众号文章爬取
-                self.r.lpush('gzh', gzh['wechat_name'] + '_' + self.a_type)
-                # 处理文章，图片
-                self.work(gzh, article)
-
-        # 记录下爬取的页码
-        page_name = self.a_type + '_page'
-        self.r.set(page_name, self.page)
-
-        if set_redis:
-            self.r.set(self.a_type, max_time)
-
+            # 处理文章，图片
+            self.work(i['gzh'], i['article'])
 
 if __name__ == '__main__':
     ''' 类型
@@ -277,14 +242,6 @@ if __name__ == '__main__':
         '时尚圈': 'fashion',
     }
 
-    args = sys.argv
-    if len(args) > 1:
-        page = 2
-        while True:
-            s = spider(args[1], page, False)
-            s.run()
-            page += 1
-    else:
-        for k in wxs:
-            s = spider(wxs[k], 1,False)
-            s.run()
+    for k in wxs:
+        s = spider(wxs[k])
+        s.run()

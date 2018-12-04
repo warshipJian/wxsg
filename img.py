@@ -5,9 +5,12 @@
 验证码识别
 """
 
-import re
+import re,base64,sys,time
+import ast
 from PIL import Image
+import cStringIO
 import pytesseract
+from ShowapiRequest import ShowapiRequest
 
 def getImage():
     fileName = '/tmp/code.png'
@@ -60,4 +63,16 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    im = Image.open('./code/1543842489.56.jpg')
+    buffer = cStringIO.StringIO()
+    im.save(buffer,format="JPEG")
+    img_base64 = base64.b64encode(buffer.getvalue())
+    r = ShowapiRequest("http://route.showapi.com/184-5", "82117", "6e9549ad376b4fc588f3ca9b052eed12")
+    r.addBodyPara("img_base64",img_base64)
+    r.addBodyPara("typeId", "34")
+    r.addBodyPara("convert_to_jpg", "0")
+    r.addBodyPara("needMorePrecise", "0")
+    #r.addFilePara("img", './code/1543841163.18.jpg') #文件上传时设置
+    res = r.post()
+    result = ast.literal_eval(res.text)
+    print(result['showapi_res_body']['Result'])
