@@ -25,14 +25,6 @@ def getCode(img,typeId):
     :param typeId:
     :return:
     '''
-    '''
-    f = tempfile.TemporaryFile()
-    f.write(img)
-    im = Image.open(f)
-    buffer = cStringIO.StringIO()
-    im.save(buffer, format="JPEG")
-    img_base64 = base64.b64encode(buffer.getvalue())
-    '''
     img_base64 = base64.b64encode(img)
     r = ShowapiRequest("http://route.showapi.com/184-5", "82117", "6e9549ad376b4fc588f3ca9b052eed12")
     r.addBodyPara("img_base64", img_base64)
@@ -50,7 +42,7 @@ def getCode(img,typeId):
     im = Image.open(f)
     img_name = str(time.time()) + '.jpg'
     print(img_name)
-    im.save('/opt/code/' + img_name)
+    im.save('./img/' + img_name)
     return code
 
 def identify_image_callback_showapi_sogou(img):
@@ -65,15 +57,24 @@ def identify_image_callback_showapi_weixin(img):
     print('识别微信验证码: ' + code)
     return code
 
-if __name__ == '__main__':
+def getip():
     r = redis.Redis(host='localhost', port=6379, db=1)
-    # 代理服务器
-    proxyHost = "http-dyn.abuyun.com"
-    proxyPort = "9020"
+    ip = r.lpop('proxy')
+    if not ip:
+        return False
+        print('代理ip用完了,请查看ip地址池')
+        time.sleep(60 * 60 * 24 * 30)
 
-    # 代理隧道验证信息
-    proxyUser = "H18ZRW855Y92O12D"
-    proxyPass = "254043017FECCFAE"
+    ip = ip.split(':')
+    if len(ip) <= 1:
+        return False
+
+    proxyHost = ip[0]
+    proxyPort = ip[1]
+
+    # 代理信息
+    proxyUser = "5f3b3dc7c237"
+    proxyPass = "717d31dd13"
 
     proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
         "host": proxyHost,
@@ -81,45 +82,61 @@ if __name__ == '__main__':
         "user": proxyUser,
         "pass": proxyPass,
     }
-
     proxies = {
         "http": proxyMeta,
         "https": proxyMeta,
     }
 
-    #use_proxies = 2
+    return proxies
+
+if __name__ == '__main__':
+    r = redis.Redis(host='localhost', port=6379, db=1)
+    proxies = getip()
+    if not proxies:
+        print('代理ip用完了,请查看ip地址池')
+        time.sleep(60 * 60 * 24 * 30)
+
     #ws_api = WechatSogouAPI()
-    ws_api = WechatSogouAPI(proxies=proxies)
+    ws_api = WechatSogouAPI(proxies=proxies,captcha_break_time=1)
     while True:
         # 注意下磁盘空间，不够时停止爬取
         fdisk = tools.fdisk()
         if fdisk.status() == 2:
             print('磁盘空间不足')
-            time.sleep(60*60*24*30) 
+            time.sleep(60*60*24*30)
 
         gzh_name = r.lpop('gzh')
         if gzh_name:
             gzh_tmp = gzh_name.split('_')
             try:
-                # 本地和代理轮着来
-                #if use_proxies % 2 == 1:
-                #    ws_api = WechatSogouAPI(captcha_break_time=1,proxies=proxies)
-                #else:
-                #    ws_api = WechatSogouAPI(captcha_break_time=1)
                 data = ws_api.get_gzh_article_by_history(gzh_tmp[0],
                                                          identify_image_callback_sogou=identify_image_callback_showapi_sogou,
                                                          identify_image_callback_weixin=identify_image_callback_showapi_weixin)
             except exceptions.WechatSogouVcodeOcrException as e:
-                #use_proxies += 1
                 print(e)
                 s = str(e)
                 if '-6' in s:
-                    print('代理有问题,睡一下再试')
-                    # 代理或本地ip有问题时，睡眠11分钟后再试
-                    time.sleep(60*41)
+                    print('代理ip问题')
+                    proxies = getip()
+                    if proxies:
+                        ws_api = WechatSogouAPI(proxies=proxies, captcha_break_time=1)
+                        continue
+                    else:
+                        print('代理ip用完了,等10分钟')
+                        time.sleep(60*10)
                 else:
                     print('验证码或其他问题')
+                    time.sleep(1)
                 continue
+            except Exception as e:
+                print(e)
+                proxies = getip()
+                if proxies:
+                    ws_api = WechatSogouAPI(proxies=proxies, captcha_break_time=1)
+                    continue
+                else:
+                    print('代理ip用完了,等10分钟')
+                    time.sleep(60*10) 
 
             # 处理爬取到的文章
             gzh = {}
@@ -141,8 +158,8 @@ if __name__ == '__main__':
                 article['title'] = i['title']
                 article['url'] = i['content_url']
                 run.spider(gzh_tmp[1]).work(gzh, article)
-            # 防止被封ip
-            time.sleep(random.randrange(1,10))
+            # 防止被封ip,随机睡几秒
+            time.sleep(random.randrange(1,5))
         else:
-            print('取完了')
+            print('公众号取完了，等待5分钟再试')
             time.sleep(300)

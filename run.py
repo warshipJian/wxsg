@@ -128,6 +128,7 @@ class spider(object):
     def save_img(self, img_url):
         """
         存取图片
+
         :param img_url:
         :param img_name:
         :return:
@@ -179,9 +180,6 @@ class spider(object):
         if img_file_a:
             article['main_img_local'] = img_file_a  # 存储路径到数据库
 
-        # 将公众号放入redis,用于公众号文章爬取
-        self.r.lpush('gzh', gzh['wechat_name'] + '_' + self.a_type)
-
         # 文章处理
         a_id = self.create_article(self.session, gzh, article, self.a_type)
 
@@ -222,6 +220,8 @@ class spider(object):
         for i in gzh_articles:
             # 处理文章，图片
             self.work(i['gzh'], i['article'])
+            # 将公众号放入redis,用于公众号文章爬取
+            self.r.lpush('gzh', i['gzh']['wechat_name'] + '_' + self.a_type)
 
 if __name__ == '__main__':
     ''' 类型

@@ -21,12 +21,38 @@ class md5:
         m.update(self.value)
         return m.hexdigest()
 
+def abuyun():
+    # 代理服务器
+    proxyHost = "http-dyn.abuyun.com"
+    proxyPort = "9020"
+
+    # 代理隧道验证信息
+    proxyUser = "H18ZRW855Y92O12D"
+    proxyPass = "254043017FECCFAE"
+
+    proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
+        "host": proxyHost,
+        "port": proxyPort,
+        "user": proxyUser,
+        "pass": proxyPass,
+    }
+
+    proxies = {
+        "http": proxyMeta,
+        "https": proxyMeta,
+    }
+    return proxies
+
 class getip:
 
     def client(self):
-        r = requests.get('http://test.abuyun.com/')
-        html = r.text
 
+        proxies = abuyun()
+        # 手动更换ip
+        r = requests.get('http://proxy.abuyun.com/switch-ip',proxies=proxies)
+        return r.text
+        r = requests.get('http://test.abuyun.com/',proxies=proxies)
+        html = r.text
         for i in html.split('\n'):
             if 'client-ip' in i:
                 i = i.split('<td>')
