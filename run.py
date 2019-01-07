@@ -203,6 +203,8 @@ class spider(object):
         for i in gzh_articles:
             # 处理文章，图片
             self.work(i['gzh'], i['article'])
+            # 睡1秒，防止被封
+            time.sleep(1)
             # 将公众号放入redis,用于公众号文章爬取
             #self.r.lpush('gzh', i['gzh']['wechat_name'] + '_' + self.a_type)
 
