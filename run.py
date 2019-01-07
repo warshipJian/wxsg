@@ -222,7 +222,6 @@ class spider(object):
             # 去掉重复的文章，即同一个公众号，同一时间内的同一个标题的文章
             a_dis = self.session.query(Model.article) \
                 .filter(Model.article.title == article['title']) \
-                .filter(Model.article.time == article['time']) \
                 .filter(Model.article.wechat_name == article['wechat_name']) \
                 .first()
             if a_dis:
