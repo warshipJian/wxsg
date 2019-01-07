@@ -173,15 +173,14 @@ class spider(object):
         resp = requests.get(article['url'])
         resp.encoding = 'utf-8'
         content = structuring.WechatSogouStructuring.get_article_detail(resp.text)
+        if content == '':
+            return ''
         html = content['content_html']
         # 爬取正文
         #html = abuyun(article['url']).get_html()
 
         # 存储正文
-        status = 1
-        if '阅读原文' not in html:
-            status = 0
-        self.create_article_content(self.session, html, a_id,status)
+        self.create_article_content(self.session, html, a_id,1)
 
         # 提取图片
         images = content['content_img_list']
