@@ -7,14 +7,14 @@ import redis
 import shutil
 import urlparse
 from bs4 import BeautifulSoup
-from wechatsogou import WechatSogouAPI, WechatSogouConst
+from wechatsogou import WechatSogouAPI, WechatSogouConst,structuring
 from sqlalchemy import Column, String, create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from wechatsogou.exceptions import WechatSogouException
 import Model
 from abuyun import abuyun
 import tools
-
 
 class spider(object):
 
@@ -50,12 +50,9 @@ class spider(object):
         # 插入文章
         new_article = Model.article(
             wechat_name=gzh['wechat_name'],
-            headimage=gzh['headimage'],
-            headimage_local=gzh['headimage_local'],
             abstract=article['abstract'],
             main_img=article['main_img'],
             main_img_local=article['main_img_local'],
-            open_id=article['open_id'],
             time=article['time'],
             title=article['title'],
             url=article['url'],
@@ -136,8 +133,8 @@ class spider(object):
         img_path, img_name = self.get_img_path(img_url)
         if not img_url or not img_name or not img_path:
             return None
-
-        img_url = "http://" + img_url.split("//")[-1]
+        if 'http://' not in img_url or 'https://' not in img_url:
+            img_url = "http://" + img_url.split("//")[-1]
 
         # 获取图片
         r = requests.get(img_url, stream=True)
@@ -168,12 +165,6 @@ class spider(object):
         if a_dis:
             return 'yes'
 
-        # 公众号头像处理
-        gzh['headimage_local'] = 'None'
-        img_file_gzh = self.save_img(gzh['headimage'])  # 传url，图片名称，图片地址
-        if img_file_gzh:
-            gzh['headimage_local'] = img_file_gzh  # 存储路径到数据库
-
         # 文章首图片处理
         article['main_img_local'] = 'None'
         img_file_a = self.save_img(article['main_img'])  # 传url，图片名称，图片地址
@@ -183,30 +174,26 @@ class spider(object):
         # 文章处理
         a_id = self.create_article(self.session, gzh, article, self.a_type)
 
+        resp = requests.get(article['url'])
+        resp.encoding = 'utf-8'
+        content = structuring.WechatSogouStructuring.get_article_detail(resp.text)
+        html = content['content_html']
         # 爬取正文
-        html = abuyun(article['url']).get_html()
+        #html = abuyun(article['url']).get_html()
 
         # 存储正文
         status = 1
-        if '<!DOCTYPE html>' not in html:
+        if '阅读原文' not in html:
             status = 0
         self.create_article_content(self.session, html, a_id,status)
 
-        # 分析正文内容，提取图片
-        soup = BeautifulSoup(html, "html.parser")
-        images = soup.find_all('img')
+        # 提取图片
+        images = content['content_img_list']
         if images:
             for image in images:
-                data_src = image.get('data-src')
-                if data_src:
-                    img_path = self.save_img(data_src)
-                    if img_path:
-                        self.create_article_img(self.session, a_id, img_path, data_src)
-                src = image.get('src')
-                if src:
-                    img_path = self.save_img(src)
-                    if img_path:
-                        self.create_article_img(self.session, a_id, img_path, src)
+                img_path = self.save_img(image)
+                if img_path:
+                    self.create_article_img(self.session, a_id, img_path, image)
 
         # 打印下
         print(str(article['time']) + ' ' + str(self.page) + ' ' + gzh['wechat_name'] + ' ' + article['title'])
@@ -221,7 +208,7 @@ class spider(object):
             # 处理文章，图片
             self.work(i['gzh'], i['article'])
             # 将公众号放入redis,用于公众号文章爬取
-            self.r.lpush('gzh', i['gzh']['wechat_name'] + '_' + self.a_type)
+            #self.r.lpush('gzh', i['gzh']['wechat_name'] + '_' + self.a_type)
 
 if __name__ == '__main__':
     ''' 类型

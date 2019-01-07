@@ -73,8 +73,8 @@ def getip():
     proxyPort = ip[1]
 
     # 代理信息
-    proxyUser = "5f3b3dc7c237"
-    proxyPass = "717d31dd13"
+    proxyUser = "123456"
+    proxyPass = "123456"
 
     proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
         "host": proxyHost,

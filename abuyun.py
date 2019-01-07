@@ -19,8 +19,8 @@ class abuyun:
         proxyPort = "9020"
 
         # 代理隧道验证信息
-        proxyUser = "H18ZRW855Y92O12D"
-        proxyPass = "254043017FECCFAE"
+        proxyUser = "123456"
+        proxyPass = "123456"
 
         proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
             "host": proxyHost,

@@ -19,15 +19,12 @@ class article(Base):
     # 表的结构:
     id = Column(Integer, primary_key=True)
     wechat_name = Column(String(64))
-    headimage = Column(String(256))
     abstract = Column(String(4096))
     main_img = Column(String(256))
-    open_id = Column(String(32))
     time = Column(String(11))
     title = Column(String(256))
     url = Column(String(256))
     type = Column(String(16))
-    headimage_local = Column(String(256))
     main_img_local = Column(String(256))
 
 # 文章内容表
