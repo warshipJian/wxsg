@@ -38,7 +38,6 @@ class spider(object):
         """
         存取文章
         :param session:
-        :param gzh:
         :param article:
         :param a_type:
         :return:
