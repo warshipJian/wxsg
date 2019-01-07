@@ -22,9 +22,11 @@ class article(Base):
     abstract = Column(String(4096))
     main_img = Column(String(256))
     time = Column(String(11))
+    status = Column(Integer)
     title = Column(String(256))
     url = Column(String(256))
     type = Column(String(16))
+    main_img_local = Column(String(256))
 
 # 文章内容表
 class article_content(Base):

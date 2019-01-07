@@ -36,25 +36,39 @@ class spider(object):
 
     def create_article(self, session, article, a_type):
         """
-        存取文章
+        存取文章信息
         :param session:
         :param article:
         :param a_type:
         :return:
         """
-        # 插入文章
         new_article = Model.article(
             wechat_name=article['wechat_name'],
             abstract=article['abstract'],
             main_img=article['main_img'],
+            main_img_local=article['main_img_local'],
             time=article['time'],
             title=article['title'],
             url=article['url'],
+            status=article['status'],
             type=a_type,
         )
         session.add(new_article)
         session.commit()
         return new_article.id
+
+    def update_article(self, session, id, data):
+        """
+        更新文章
+        :param session:
+        :param id:
+        :param data:
+        :return:
+        """
+        user_query = session.query(Model.article).filter_by(id=id)
+        user_query.update(data)
+        session.commit()
+        return id
 
     def create_article_content(self, session, html, article_id,status):
         """
@@ -65,7 +79,6 @@ class spider(object):
         :param status:
         :return:
         """
-        # 插入正文
         new_article_content = Model.article_content(
             article_id=article_id,
             content=html,
@@ -119,7 +132,6 @@ class spider(object):
     def save_img(self, img_url):
         """
         存取图片
-
         :param img_url:
         :param img_name:
         :return:
@@ -151,10 +163,20 @@ class spider(object):
 
     def work(self, article):
 
+        # 文章首图片处理
+        article['main_img_local'] = 'None'
+        img_file_a = self.save_img(article['main_img'])
+        if img_file_a:
+            article['main_img_local'] = img_file_a  # 存储本地路径
+
         # 文章处理
+        article['status'] = 1
         if 'id' in article:
             a_id = article['id']
+            # 更新文章信息
+            self.update_article(self.session, a_id, article)
         else:
+            # 新增文章信息
             a_id = self.create_article(self.session, article, self.a_type)
 
         # 爬取正文

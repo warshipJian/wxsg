@@ -149,21 +149,14 @@ def old():
             if 'article' not in data:
                 print(data)
                 continue
-            if 'gzh' in data:
-                gzh['wechat_name'] = data['gzh']['wechat_name']
-                gzh['headimage'] = data['gzh']['headimage']
-            else:
-                gzh['wechat_name'] = gzh_name
-                gzh['headimage'] = 'http://img1.cache.netease.com/catchpic/4/45/459BC016DCB46B2AD648E0D37D503E3A.jpg'
             for i in data['article']:
                 article = {}
                 article['abstract'] = i['abstract']
                 article['main_img'] = i['cover']
-                article['open_id'] = 0
                 article['time'] = i['datetime']
                 article['title'] = i['title']
                 article['url'] = i['content_url']
-                run.spider(gzh_tmp[1]).work(gzh, article)
+                run.spider(gzh_tmp[1]).work(article)
             # 防止被封ip,随机睡几秒
             time.sleep(random.randrange(1, 5))
         else:
@@ -173,7 +166,19 @@ def old():
 # 爬取正文
 def get_gzh_content():
     session = mysql.connect()
-
+    a = session.execute('select * from article where `status`=0')
+    data = a.fetchall()
+    if data:
+        for i in data:
+            article = {}
+            article['id'] = int(i[0])
+            article['wechat_name'] = str(i[1])
+            article['title'] = str(i[2])
+            article['url'] = str(i[4])
+            article['main_img'] = str(i[5])
+            article['time'] = str(i[7])
+            article['type'] = str(i[9])
+            run.spider(article['type']).work(article)
 
 if __name__ == '__main__':
-    update()
+    get_gzh_content()
