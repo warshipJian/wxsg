@@ -7,10 +7,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import update
 from Model import article_content,article
 import redis
+import config
 
 if __name__ == '__main__':
-
-    engine = create_engine('mysql://root:123456@localhost:3306/wx?charset=utf8mb4')
+    db_conf = config.database()
+    engine = create_engine('mysql://%s:%s@localhost:3306/wx?charset=utf8mb4' %(db_conf['user'],db_conf['password']),
+                               pool_pre_ping=True)
     DBSession = sessionmaker(bind=engine)
     session = DBSession()
 
