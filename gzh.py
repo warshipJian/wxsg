@@ -18,6 +18,7 @@ import Model,run,tools
 from ShowapiRequest import ShowapiRequest
 import tempfile
 import config
+import mysql
 import cStringIO
 
 def getCode(img,typeId):
@@ -94,21 +95,21 @@ def getip():
 
     return proxies
 
-if __name__ == '__main__':
+def old():
     r = redis.Redis(host='localhost', port=6379, db=1)
     proxies = getip()
     if not proxies:
         print('代理ip用完了,请查看ip地址池')
         time.sleep(60 * 60 * 24 * 30)
 
-    #ws_api = WechatSogouAPI()
-    ws_api = WechatSogouAPI(proxies=proxies,captcha_break_time=1)
+    # ws_api = WechatSogouAPI()
+    ws_api = WechatSogouAPI(proxies=proxies, captcha_break_time=1)
     while True:
         # 注意下磁盘空间，不够时停止爬取
         fdisk = tools.fdisk()
         if fdisk.status() == 2:
             print('磁盘空间不足')
-            time.sleep(60*60*24*30)
+            time.sleep(60 * 60 * 24 * 30)
 
         gzh_name = r.lpop('gzh')
         if gzh_name:
@@ -128,7 +129,7 @@ if __name__ == '__main__':
                         continue
                     else:
                         print('代理ip用完了,等10分钟')
-                        time.sleep(60*10)
+                        time.sleep(60 * 10)
                 else:
                     print('验证码或其他问题')
                     time.sleep(1)
@@ -141,9 +142,9 @@ if __name__ == '__main__':
                     continue
                 else:
                     print('代理ip用完了,等10分钟')
-                    time.sleep(60*10) 
+                    time.sleep(60 * 10)
 
-            # 处理爬取到的文章
+                    # 处理爬取到的文章
             gzh = {}
             if 'article' not in data:
                 print(data)
@@ -164,7 +165,15 @@ if __name__ == '__main__':
                 article['url'] = i['content_url']
                 run.spider(gzh_tmp[1]).work(gzh, article)
             # 防止被封ip,随机睡几秒
-            time.sleep(random.randrange(1,5))
+            time.sleep(random.randrange(1, 5))
         else:
             print('公众号取完了，等待5分钟再试')
             time.sleep(300)
+
+# 爬取正文
+def get_gzh_content():
+    session = mysql.connect()
+
+
+if __name__ == '__main__':
+    update()

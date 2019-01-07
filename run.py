@@ -47,7 +47,6 @@ class spider(object):
             wechat_name=article['wechat_name'],
             abstract=article['abstract'],
             main_img=article['main_img'],
-            main_img_local=article['main_img_local'],
             time=article['time'],
             title=article['title'],
             url=article['url'],
@@ -151,19 +150,18 @@ class spider(object):
             return False
 
     def work(self, article):
-        # 文章首图片处理
-        article['main_img_local'] = 'None'
-        img_file_a = self.save_img(article['main_img'])  # 传url，图片名称，图片地址
-        if img_file_a:
-            article['main_img_local'] = img_file_a  # 存储路径到数据库
 
         # 文章处理
-        a_id = self.create_article(self.session, article, self.a_type)
+        if 'id' in article:
+            a_id = article['id']
+        else:
+            a_id = self.create_article(self.session, article, self.a_type)
 
         # 爬取正文
         # abuyun(article['url']).get_html()
         resp = requests.get(article['url'])
         resp.encoding = 'utf-8'
+
         # 分析正文
         content = structuring.WechatSogouStructuring.get_article_detail(resp.text)
         if content == '':
@@ -176,8 +174,9 @@ class spider(object):
             images = content['content_img_list']
 
         # 存储正文
-        self.create_article_content(self.session, html, a_id,status)
+        self.create_article_content(self.session, html, a_id, status)
 
+        # 存储图片
         if images:
             for image in images:
                 img_path = self.save_img(image)
@@ -188,6 +187,7 @@ class spider(object):
         print(str(article['time']) + ' ' + str(self.page) + ' ' + article['wechat_name'] + ' ' + article['title'])
 
     def run(self):
+
         # 创建搜狗爬虫
         ws_api = WechatSogouAPI()
 
