@@ -170,20 +170,24 @@ class spider(object):
         # 文章处理
         a_id = self.create_article(self.session, gzh, article, self.a_type)
 
+        # 爬取正文
+        # abuyun(article['url']).get_html()
         resp = requests.get(article['url'])
         resp.encoding = 'utf-8'
+        # 分析正文
         content = structuring.WechatSogouStructuring.get_article_detail(resp.text)
         if content == '':
-            return ''
-        html = content['content_html']
-        # 爬取正文
-        #html = abuyun(article['url']).get_html()
+            status = 0
+            html = ''
+            images = None
+        else:
+            status = 1
+            html = content['content_html']
+            images = content['content_img_list']
 
         # 存储正文
-        self.create_article_content(self.session, html, a_id,1)
+        self.create_article_content(self.session, html, a_id,status)
 
-        # 提取图片
-        images = content['content_img_list']
         if images:
             for image in images:
                 img_path = self.save_img(image)
@@ -208,22 +212,17 @@ class spider(object):
             #self.r.lpush('gzh', i['gzh']['wechat_name'] + '_' + self.a_type)
 
 if __name__ == '__main__':
-    ''' 类型
-    养生堂 health
-    科技咖 technology
-    财经迷 finance
-    生活家 life
-    育儿 mummy
-    星座 constellation
-    私房话 sifanghua
-    八封精 gossip
-    时尚圈 fashion
-    '''
 
     wxs = {
-        '私房话': 'sifanghua',
-        '八封精': 'gossip',
-        '时尚圈': 'fashion',
+        '养生堂':'health',
+        '科技咖':'technology',
+        '财经迷':'finance',
+        '生活家':'life',
+        '育儿':'mummy',
+        '星座':'constellation',
+        '私房话':'sifanghua',
+        '八封精':'gossip',
+        '时尚圈':'fashion'
     }
 
     for k in wxs:
