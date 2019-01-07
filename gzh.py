@@ -179,6 +179,9 @@ def get_gzh_content():
             article['time'] = str(i[7])
             article['type'] = str(i[9])
             run.spider(article['type']).work(article)
+    else:
+        print('暂时无数据')
+        time.sleep(60*60)
 
 if __name__ == '__main__':
     get_gzh_content()
