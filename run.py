@@ -34,7 +34,7 @@ class spider(object):
         # 释放redis连接
         del self.r
 
-    def create_article(self, session, gzh, article, a_type):
+    def create_article(self, session, article, a_type):
         """
         存取文章
         :param session:
@@ -45,7 +45,7 @@ class spider(object):
         """
         # 插入文章
         new_article = Model.article(
-            wechat_name=gzh['wechat_name'],
+            wechat_name=article['wechat_name'],
             abstract=article['abstract'],
             main_img=article['main_img'],
             main_img_local=article['main_img_local'],
@@ -151,16 +151,7 @@ class spider(object):
         else:
             return False
 
-    def work(self, gzh, article):
-        # 去掉重复的文章，即同一个公众号，同一时间内的同一个标题的文章
-        a_dis = self.session.query(Model.article)\
-            .filter(Model.article.title == article['title'])\
-            .filter(Model.article.time == article['time'])\
-            .filter(Model.article.wechat_name == gzh['wechat_name'])\
-            .first()
-        if a_dis:
-            return 'yes'
-
+    def work(self, article):
         # 文章首图片处理
         article['main_img_local'] = 'None'
         img_file_a = self.save_img(article['main_img'])  # 传url，图片名称，图片地址
@@ -168,7 +159,7 @@ class spider(object):
             article['main_img_local'] = img_file_a  # 存储路径到数据库
 
         # 文章处理
-        a_id = self.create_article(self.session, gzh, article, self.a_type)
+        a_id = self.create_article(self.session, article, self.a_type)
 
         # 爬取正文
         # abuyun(article['url']).get_html()
@@ -195,7 +186,7 @@ class spider(object):
                     self.create_article_img(self.session, a_id, img_path, image)
 
         # 打印下
-        print(str(article['time']) + ' ' + str(self.page) + ' ' + gzh['wechat_name'] + ' ' + article['title'])
+        print(str(article['time']) + ' ' + str(self.page) + ' ' + article['wechat_name'] + ' ' + article['title'])
 
     def run(self):
         # 创建搜狗爬虫
@@ -204,10 +195,23 @@ class spider(object):
         # 爬取热门文章
         gzh_articles = getattr(ws_api, 'get_gzh_article_by_hot')(eval(self.m_type + self.a_type), self.page)
         for i in gzh_articles:
-            # 处理文章，图片
-            self.work(i['gzh'], i['article'])
+            gzh = i['gzh']
+            article = i['article']
+            article['wechat_name'] = gzh['wechat_name']
+            # 去掉重复的文章，即同一个公众号，同一时间内的同一个标题的文章
+            a_dis = self.session.query(Model.article) \
+                .filter(Model.article.title == article['title']) \
+                .filter(Model.article.time == article['time']) \
+                .filter(Model.article.wechat_name == article['wechat_name']) \
+                .first()
+            if a_dis:
+                continue
             # 睡1秒，防止被封
             time.sleep(1)
+
+            # 处理文章，图片
+            self.work(article)
+
             # 将公众号放入redis,用于公众号文章爬取
             #self.r.lpush('gzh', i['gzh']['wechat_name'] + '_' + self.a_type)
 
