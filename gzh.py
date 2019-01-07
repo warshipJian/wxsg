@@ -17,6 +17,7 @@ from sqlalchemy.ext.declarative import declarative_base
 import Model,run,tools
 from ShowapiRequest import ShowapiRequest
 import tempfile
+import config
 import cStringIO
 
 def getCode(img,typeId):
@@ -26,7 +27,10 @@ def getCode(img,typeId):
     :return:
     '''
     img_base64 = base64.b64encode(img)
-    r = ShowapiRequest("http://route.showapi.com/184-5", "82117", "6e9549ad376b4fc588f3ca9b052eed12")
+    conf = config.showapi()
+    my_appId = conf['appId']
+    my_appSecret = conf['appSecret']
+    r = ShowapiRequest("http://route.showapi.com/184-5", my_appId, my_appSecret)
     r.addBodyPara("img_base64", img_base64)
     r.addBodyPara("typeId", typeId)
     r.addBodyPara("convert_to_jpg", "0")
@@ -73,8 +77,9 @@ def getip():
     proxyPort = ip[1]
 
     # 代理信息
-    proxyUser = "123456"
-    proxyPass = "123456"
+    conf = config.abuyun()
+    proxyUser = conf['proxyUser']
+    proxyPass = conf['proxyPass']
 
     proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
         "host": proxyHost,

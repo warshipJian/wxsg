@@ -15,6 +15,7 @@ from wechatsogou.exceptions import WechatSogouException
 import Model
 from abuyun import abuyun
 import tools
+import config
 
 class spider(object):
 
@@ -24,7 +25,9 @@ class spider(object):
         self.page = page
 
         # 创建数据库连接
-        engine = create_engine('mysql://root:123456@localhost:3306/wx?charset=utf8mb4', pool_pre_ping=True)
+        db_conf = config.database()
+        engine = create_engine('mysql://%s:%s@localhost:3306/wx?charset=utf8mb4' %(db_conf['user'],db_conf['password']),
+                               pool_pre_ping=True)
         DBSession = sessionmaker(bind=engine)
         self.session = DBSession()
 
@@ -120,7 +123,7 @@ class spider(object):
             if not match:
                 name = name + '.jpg'
 
-        return './img/' + time.strftime("%Y/%m/%d/", time.localtime()) + urlparse_img.netloc + path, name
+        return '/opt/img/' + time.strftime("%Y/%m/%d/", time.localtime()) + urlparse_img.netloc + path, name
 
     def save_img(self, img_url):
         """

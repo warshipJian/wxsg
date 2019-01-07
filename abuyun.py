@@ -6,6 +6,7 @@
 '''
 
 import requests
+import config
 
 class abuyun:
 
@@ -19,8 +20,9 @@ class abuyun:
         proxyPort = "9020"
 
         # 代理隧道验证信息
-        proxyUser = "123456"
-        proxyPass = "123456"
+        conf = config.abuyun()
+        proxyUser = conf['proxyUser']
+        proxyPass = conf['proxyPass']
 
         proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
             "host": proxyHost,
