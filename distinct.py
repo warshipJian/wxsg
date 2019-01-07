@@ -11,13 +11,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import update
+import mysql
 
 
 if __name__ == '__main__':
     # 初始化数据库连接
-    engine = create_engine('mysql://root:123456@localhost:3306/wx?charset=utf8mb4')
-    DBSession = sessionmaker(bind=engine)
-    session = DBSession()
+    session = mysql.connect()
 
     # 删除重复文章
     # 检查是否有重复的

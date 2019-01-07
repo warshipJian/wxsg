@@ -8,14 +8,11 @@ import shutil
 import urlparse
 from bs4 import BeautifulSoup
 from wechatsogou import WechatSogouAPI, WechatSogouConst,structuring
-from sqlalchemy import Column, String, create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from wechatsogou.exceptions import WechatSogouException
 import Model
 from abuyun import abuyun
 import tools
 import config
+import mysql
 
 class spider(object):
 
@@ -25,11 +22,7 @@ class spider(object):
         self.page = page
 
         # 创建数据库连接
-        db_conf = config.database()
-        engine = create_engine('mysql://%s:%s@localhost:3306/wx?charset=utf8mb4' %(db_conf['user'],db_conf['password']),
-                               pool_pre_ping=True)
-        DBSession = sessionmaker(bind=engine)
-        self.session = DBSession()
+        self.session = mysql.connect()
 
         # 创建redis连接
         self.r = redis.Redis(host='localhost', port=6379, db=1)

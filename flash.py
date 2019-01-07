@@ -19,14 +19,13 @@ from sqlalchemy import update
 from abuyun import abuyun
 import tools,run
 from Model import article_content,article
+import mysql
 
 
 
 if __name__ == '__main__':
     # 初始化数据库连接
-    engine = create_engine('mysql://root:123456@localhost:3306/wx?charset=utf8mb4', pool_pre_ping=True)
-    DBSession = sessionmaker(bind=engine)
-    session = DBSession()
+    session = mysql.connect()
 
     # 找出status为0的文章
     a_content = session.query(article_content).filter(article_content.status == '0').all()
