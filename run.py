@@ -166,9 +166,9 @@ class spider(object):
 
         # 文章首图片处理
         article['main_img_local'] = 'None'
-        img_file_a = self.save_img(article['main_img'])
-        if img_file_a:
-            article['main_img_local'] = img_file_a  # 存储本地路径
+        #img_file_a = self.save_img(article['main_img'])
+        #if img_file_a:
+        #    article['main_img_local'] = img_file_a  # 存储本地路径
 
         # 文章处理
         article['status'] = 1
@@ -202,9 +202,10 @@ class spider(object):
         # 存储图片
         if images:
             for image in images:
-                img_path = self.save_img(image)
-                if img_path:
-                    self.create_article_img(self.session, a_id, img_path, image)
+                self.create_article_img(self.session, a_id, 'None', image)
+                #img_path = self.save_img(image)
+                #if img_path:
+                #    self.create_article_img(self.session, a_id, img_path, image)
 
         # 打印下
         print(str(article['time']) + ' ' + str(self.page) + ' ' + article['wechat_name'] + ' ' + article['title'])
