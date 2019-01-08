@@ -65,8 +65,8 @@ class spider(object):
         :param data:
         :return:
         """
-        user_query = session.query(Model.article).filter_by(id=id)
-        user_query.update(data)
+        a_query = session.query(Model.article).filter_by(id=id)
+        a_query.update(data)
         session.commit()
         return id
 

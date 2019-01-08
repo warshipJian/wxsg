@@ -22,6 +22,14 @@ if __name__ == '__main__':
     for i in a_content:
         a = session.query(article).filter(article.id == i.article_id).one()
         aq = a.__dict__
-        run.spider(aq['type']).work(aq)
+        ad = {}
+        ad['id'] = aq['id']
+        ad['wechat_name'] = aq['wechat_name']
+        ad['title'] = aq['title']
+        ad['url'] = aq['url']
+        ad['main_img'] = aq['main_img']
+        ad['time'] = aq['time']
+        ad['type'] = aq['type']
+        run.spider(ad['type']).work(ad)
 
     session.close()
