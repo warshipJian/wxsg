@@ -236,17 +236,27 @@ class spider(object):
             #self.r.lpush('gzh', i['gzh']['wechat_name'] + '_' + self.a_type)
 
 if __name__ == '__main__':
-
     wxs = {
-        '养生堂':'health',
-        '科技咖':'technology',
-        '财经迷':'finance',
-        '生活家':'life',
-        '育儿':'mummy',
+        '热门':'hot',
+        '搞笑': 'gaoxiao',
+        '养生堂': 'health',
+        '私房话': 'sifanghua',
+        '八封精': 'gossip',
+        '科技咖': 'technology',
+        '财经迷': 'finance',
+        '汽车控': 'car',
+        '生活家': 'life',
+        '时尚圈': 'fashion',
+        '育儿': 'mummy',
+        '旅游': 'travel',
+        '职场': 'job',
+        '美食': 'food',
+        '教育': 'study',
         '星座':'constellation',
-        '私房话':'sifanghua',
-        '八封精':'gossip',
-        '时尚圈':'fashion'
+        '体育':'sport',
+        '军事':'military',
+        '游戏':'game',
+        '萌宠':'pet',
     }
 
     for k in wxs:
