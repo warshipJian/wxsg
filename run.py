@@ -7,12 +7,13 @@ import redis
 import shutil
 import urlparse
 from bs4 import BeautifulSoup
-from wechatsogou import WechatSogouAPI, WechatSogouConst,structuring
+from wechatsogou import WechatSogouAPI, WechatSogouConst
 import Model
 from abuyun import abuyun
 import tools
 import config
 import mysql
+import wxsg
 
 class spider(object):
 
@@ -185,7 +186,7 @@ class spider(object):
         resp.encoding = 'utf-8'
 
         # 分析正文
-        content = structuring.WechatSogouStructuring.get_article_detail(resp.text)
+        content = wxsg.WechatSogouStructuring.get_article_detail(resp.text)
         if content:
             status = 1
             html = content['content_html']
