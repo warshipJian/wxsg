@@ -186,14 +186,14 @@ class spider(object):
 
         # 分析正文
         content = structuring.WechatSogouStructuring.get_article_detail(resp.text)
-        if content == '':
-            status = 0
-            html = ''
-            images = None
-        else:
+        if content:
             status = 1
             html = content['content_html']
             images = content['content_img_list']
+        else:
+            status = 0
+            html = ''
+            images = None
 
         # 存储正文
         self.create_article_content(self.session, html, a_id, status)
